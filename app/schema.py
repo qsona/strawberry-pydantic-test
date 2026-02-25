@@ -1,9 +1,8 @@
-import json
 from typing import Annotated, Optional, Union
 
 import strawberry
 import strawberry.experimental.pydantic
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter
 
 from app import database, models
 from app.content_types import (
@@ -70,13 +69,8 @@ def _content_to_strawberry(data: dict) -> TextContentType | ImageContentType | L
     """Validate content dict with Pydantic, then convert to Strawberry type."""
     adapter = TypeAdapter(PostContent)
     pydantic_obj = adapter.validate_python(data)
-
-    if isinstance(pydantic_obj, TextContent):
-        return TextContentType.from_pydantic(pydantic_obj)
-    elif isinstance(pydantic_obj, ImageContent):
-        return ImageContentType.from_pydantic(pydantic_obj)
-    else:
-        return LinkContentType.from_pydantic(pydantic_obj)
+    strawberry_type = type(pydantic_obj)._strawberry_type
+    return strawberry_type.from_pydantic(pydantic_obj)
 
 
 def _user_from_model(u: models.User) -> User:
