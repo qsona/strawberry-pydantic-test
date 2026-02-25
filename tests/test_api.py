@@ -6,7 +6,7 @@ from app.models import Post, User
 
 
 CONTENT_FRAGMENT = """
-    ... on TextContentType { __typename body format }
+    ... on TextContentType { __typename body format wordCount }
     ... on ImageContentType { __typename url caption }
     ... on LinkContentType { __typename url title description }
 """
@@ -91,6 +91,7 @@ class TestCreatePostWithTextContent:
         assert data["content"]["__typename"] == "TextContentType"
         assert data["content"]["body"] == "Hello world"
         assert data["content"]["format"] == "MARKDOWN"
+        assert data["content"]["wordCount"] == 2
 
     async def test_text_post_default_format(self, client, db_session):
         user = User(name="Alice")
@@ -250,6 +251,7 @@ class TestListPostsWithContent:
         assert len(posts) == 1
         assert posts[0]["content"]["__typename"] == "TextContentType"
         assert posts[0]["content"]["body"] == "Hi"
+        assert posts[0]["content"]["wordCount"] == 1
 
 
 class TestUserPostsRelation:

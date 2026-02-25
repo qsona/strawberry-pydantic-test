@@ -22,6 +22,10 @@ class TextContentType:
     body: strawberry.auto
     format: strawberry.auto
 
+    @strawberry.field
+    def word_count(self) -> int:
+        return len(self.body.split())
+
 
 @strawberry.experimental.pydantic.type(ImageContent)
 class ImageContentType:
