@@ -80,7 +80,7 @@ class TestCreatePostWithTextContent:
             "variables": {
                 "input": {
                     "title": "My Article",
-                    "content": {"type": "text", "body": "Hello world", "format": "markdown"},
+                    "content": {"text": {"body": "Hello world", "format": "MARKDOWN"}},
                     "userId": user.id,
                 }
             }
@@ -104,7 +104,7 @@ class TestCreatePostWithTextContent:
             "variables": {
                 "input": {
                     "title": "Plain text",
-                    "content": {"type": "text", "body": "Just text"},
+                    "content": {"text": {"body": "Just text"}},
                     "userId": user.id,
                 }
             }
@@ -126,7 +126,7 @@ class TestCreatePostWithImageContent:
             "variables": {
                 "input": {
                     "title": "Photo",
-                    "content": {"type": "image", "url": "https://example.com/img.png", "caption": "Nice view"},
+                    "content": {"image": {"url": "https://example.com/img.png", "caption": "Nice view"}},
                     "userId": user.id,
                 }
             }
@@ -150,9 +150,10 @@ class TestCreatePostWithImageContent:
                 "input": {
                     "title": "HD Photo",
                     "content": {
-                        "type": "image",
-                        "url": "https://example.com/hd.png",
-                        "dimensions": {"width": 1920, "height": 1080},
+                        "image": {
+                            "url": "https://example.com/hd.png",
+                            "dimensions": {"width": 1920, "height": 1080},
+                        }
                     },
                     "userId": user.id,
                 }
@@ -174,7 +175,7 @@ class TestCreatePostWithImageContent:
             "variables": {
                 "input": {
                     "title": "Quick snap",
-                    "content": {"type": "image", "url": "https://example.com/snap.jpg"},
+                    "content": {"image": {"url": "https://example.com/snap.jpg"}},
                     "userId": user.id,
                 }
             }
@@ -197,10 +198,11 @@ class TestCreatePostWithLinkContent:
                 "input": {
                     "title": "Cool link",
                     "content": {
-                        "type": "link",
-                        "url": "https://example.com",
-                        "title": "Example",
-                        "description": "An example site",
+                        "link": {
+                            "url": "https://example.com",
+                            "title": "Example",
+                            "description": "An example site",
+                        }
                     },
                     "userId": user.id,
                 }
@@ -215,7 +217,8 @@ class TestCreatePostWithLinkContent:
 
 
 class TestPostContentValidation:
-    async def test_invalid_content_type_rejected(self, client, db_session):
+    async def test_multiple_content_fields_rejected(self, client, db_session):
+        """@oneOf requires exactly one field to be set."""
         user = User(name="Alice")
         db_session.add(user)
         db_session.commit()
@@ -226,7 +229,10 @@ class TestPostContentValidation:
             "variables": {
                 "input": {
                     "title": "Bad post",
-                    "content": {"type": "video", "url": "https://example.com/v.mp4"},
+                    "content": {
+                        "text": {"body": "Hello"},
+                        "image": {"url": "https://example.com/img.png"},
+                    },
                     "userId": user.id,
                 }
             }
@@ -245,7 +251,7 @@ class TestPostContentValidation:
             "variables": {
                 "input": {
                     "title": "Bad post",
-                    "content": {"type": "text"},  # missing 'body'
+                    "content": {"text": {}},  # missing 'body'
                     "userId": user.id,
                 }
             }
