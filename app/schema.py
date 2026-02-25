@@ -11,6 +11,7 @@ from app.content_types import (
     LinkContent,
     PostContent,
     TextContent,
+    TextFormat,
 )
 
 
@@ -106,7 +107,6 @@ class Query:
 
 
 # --- Mutation ---
-# Input uses JSON scalar; Pydantic validates in the resolver
 
 
 @strawberry.input
@@ -115,10 +115,68 @@ class CreateUserInput:
 
 
 @strawberry.input
+class TextContentInput:
+    body: str
+    format: TextFormat = TextFormat.PLAIN
+
+
+@strawberry.input
+class ImageDimensionsInput:
+    width: int
+    height: int
+
+
+@strawberry.input
+class ImageContentInput:
+    url: str
+    caption: Optional[str] = None
+    dimensions: Optional[ImageDimensionsInput] = None
+
+
+@strawberry.input
+class LinkContentInput:
+    url: str
+    title: str
+    description: Optional[str] = None
+
+
+@strawberry.input(one_of=True)
+class PostContentInput:
+    text: strawberry.Maybe[TextContentInput]
+    image: strawberry.Maybe[ImageContentInput]
+    link: strawberry.Maybe[LinkContentInput]
+
+
+@strawberry.input
 class CreatePostInput:
     title: str
-    content: strawberry.scalars.JSON
+    content: PostContentInput
     user_id: int
+
+
+def _to_content_json(content: PostContentInput) -> str:
+    """Convert a @oneOf PostContentInput to a validated JSON string for storage."""
+    if content.text is not None:
+        inp = content.text.value
+        validated = TextContent(type="text", body=inp.body, format=inp.format)
+    elif content.image is not None:
+        inp = content.image.value
+        dims = (
+            ImageDimensions(width=inp.dimensions.width, height=inp.dimensions.height)
+            if inp.dimensions
+            else None
+        )
+        validated = ImageContent(
+            type="image", url=inp.url, caption=inp.caption, dimensions=dims
+        )
+    elif content.link is not None:
+        inp = content.link.value
+        validated = LinkContent(
+            type="link", url=inp.url, title=inp.title, description=inp.description
+        )
+    else:
+        raise ValueError("Exactly one content type must be provided")
+    return validated.model_dump_json()
 
 
 @strawberry.type
@@ -134,14 +192,12 @@ class Mutation:
 
     @strawberry.mutation
     def create_post(self, input: CreatePostInput) -> PostType:
-        # Validate content with Pydantic
-        adapter = TypeAdapter(PostContent)
-        validated = adapter.validate_python(input.content)
+        content_json = _to_content_json(input.content)
 
         with database.SessionLocal() as session:
             post = models.Post(
                 title=input.title,
-                content_json=validated.model_dump_json(),
+                content_json=content_json,
                 user_id=input.user_id,
             )
             session.add(post)
