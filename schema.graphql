@@ -11,6 +11,13 @@ input CreateUserInput {
 type ImageContentType {
   url: String!
   caption: String
+  dimensions: ImageDimensionsType
+}
+
+type ImageDimensionsType {
+  aspectRatio: String!
+  width: Int!
+  height: Int!
 }
 
 """
@@ -32,8 +39,8 @@ type Mutation {
 type Post {
   id: Int!
   title: String!
-  content: PostContentType!
   userId: Int!
+  content: PostContentType!
 }
 
 union PostContentType = TextContentType | ImageContentType | LinkContentType
@@ -45,6 +52,7 @@ type Query {
 }
 
 type TextContentType {
+  wordCount: Int!
   body: String!
   format: TextFormat!
 }
