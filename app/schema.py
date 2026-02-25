@@ -1,3 +1,4 @@
+import dataclasses
 from typing import Annotated, Optional, Union
 
 import strawberry
@@ -156,27 +157,14 @@ class CreatePostInput:
 
 def _to_content_json(content: PostContentInput) -> str:
     """Convert a @oneOf PostContentInput to a validated JSON string for storage."""
-    if content.text is not None:
-        inp = content.text.value
-        validated = TextContent(type="text", body=inp.body, format=inp.format)
-    elif content.image is not None:
-        inp = content.image.value
-        dims = (
-            ImageDimensions(width=inp.dimensions.width, height=inp.dimensions.height)
-            if inp.dimensions
-            else None
-        )
-        validated = ImageContent(
-            type="image", url=inp.url, caption=inp.caption, dimensions=dims
-        )
-    elif content.link is not None:
-        inp = content.link.value
-        validated = LinkContent(
-            type="link", url=inp.url, title=inp.title, description=inp.description
-        )
-    else:
-        raise ValueError("Exactly one content type must be provided")
-    return validated.model_dump_json()
+    adapter = TypeAdapter(PostContent)
+    for field in dataclasses.fields(content):
+        maybe = getattr(content, field.name)
+        if maybe is not None:
+            data = dataclasses.asdict(maybe.value)
+            data["type"] = field.name
+            return adapter.validate_python(data).model_dump_json()
+    raise ValueError("Exactly one content type must be provided")
 
 
 @strawberry.type
