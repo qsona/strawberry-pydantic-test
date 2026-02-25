@@ -45,26 +45,6 @@ PostContentType = Annotated[
 # --- Core GraphQL types ---
 
 
-@strawberry.type
-class Post:
-    id: int
-    title: str
-    content: PostContentType
-    user_id: int
-
-
-@strawberry.type
-class User:
-    id: int
-    name: str
-
-    @strawberry.field
-    def posts(self) -> list[Post]:
-        with database.SessionLocal() as session:
-            db_posts = session.query(models.Post).filter(models.Post.user_id == self.id).all()
-            return [_post_from_model(p) for p in db_posts]
-
-
 def _content_to_strawberry(data: dict) -> TextContentType | ImageContentType | LinkContentType:
     """Validate content dict with Pydantic, then convert to Strawberry type."""
     adapter = TypeAdapter(PostContent)
@@ -73,17 +53,26 @@ def _content_to_strawberry(data: dict) -> TextContentType | ImageContentType | L
     return strawberry_type.from_pydantic(pydantic_obj)
 
 
-def _user_from_model(u: models.User) -> User:
-    return User(id=u.id, name=u.name)
+@strawberry.type(name="Post")
+class PostType:
+    id: int
+    title: str
+    user_id: int
+
+    @strawberry.field
+    def content(self) -> PostContentType:
+        return _content_to_strawberry(self.content)
 
 
-def _post_from_model(p: models.Post) -> Post:
-    return Post(
-        id=p.id,
-        title=p.title,
-        content=_content_to_strawberry(p.content),
-        user_id=p.user_id,
-    )
+@strawberry.type(name="User")
+class UserType:
+    id: int
+    name: str
+
+    @strawberry.field
+    def posts(self) -> list[PostType]:
+        with database.SessionLocal() as session:
+            return session.query(models.Post).filter(models.Post.user_id == self.id).all()
 
 
 # --- Query ---
@@ -92,20 +81,19 @@ def _post_from_model(p: models.Post) -> Post:
 @strawberry.type
 class Query:
     @strawberry.field
-    def users(self) -> list[User]:
+    def users(self) -> list[UserType]:
         with database.SessionLocal() as session:
-            return [_user_from_model(u) for u in session.query(models.User).all()]
+            return session.query(models.User).all()
 
     @strawberry.field
-    def user(self, id: int) -> Optional[User]:
+    def user(self, id: int) -> Optional[UserType]:
         with database.SessionLocal() as session:
-            u = session.get(models.User, id)
-            return _user_from_model(u) if u else None
+            return session.get(models.User, id)
 
     @strawberry.field
-    def posts(self) -> list[Post]:
+    def posts(self) -> list[PostType]:
         with database.SessionLocal() as session:
-            return [_post_from_model(p) for p in session.query(models.Post).all()]
+            return session.query(models.Post).all()
 
 
 # --- Mutation ---
@@ -127,16 +115,16 @@ class CreatePostInput:
 @strawberry.type
 class Mutation:
     @strawberry.mutation
-    def create_user(self, input: CreateUserInput) -> User:
+    def create_user(self, input: CreateUserInput) -> UserType:
         with database.SessionLocal() as session:
             user = models.User(name=input.name)
             session.add(user)
             session.commit()
             session.refresh(user)
-            return _user_from_model(user)
+            return user
 
     @strawberry.mutation
-    def create_post(self, input: CreatePostInput) -> Post:
+    def create_post(self, input: CreatePostInput) -> PostType:
         # Validate content with Pydantic
         adapter = TypeAdapter(PostContent)
         validated = adapter.validate_python(input.content)
@@ -150,7 +138,7 @@ class Mutation:
             session.add(post)
             session.commit()
             session.refresh(post)
-            return _post_from_model(post)
+            return post
 
 
 schema = strawberry.Schema(query=Query, mutation=Mutation)
