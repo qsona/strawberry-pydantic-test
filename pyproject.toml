@@ -1,0 +1,22 @@
+[project]
+name = "strawberry-pydantic-test"
+version = "0.1.0"
+description = "Testing Strawberry + Pydantic integration with FastAPI and SQLite"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.34",
+    "strawberry-graphql[fastapi]>=0.262",
+    "sqlalchemy>=2.0",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.28",
+    "pytest-asyncio>=0.25",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
