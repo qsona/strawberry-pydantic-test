@@ -44,15 +44,6 @@ PostContentType = Annotated[
 
 # --- Core GraphQL types ---
 
-
-def _content_to_strawberry(data: dict) -> TextContentType | ImageContentType | LinkContentType:
-    """Validate content dict with Pydantic, then convert to Strawberry type."""
-    adapter = TypeAdapter(PostContent)
-    pydantic_obj = adapter.validate_python(data)
-    strawberry_type = type(pydantic_obj)._strawberry_type
-    return strawberry_type.from_pydantic(pydantic_obj)
-
-
 @strawberry.type(name="Post")
 class PostType:
     id: int
@@ -61,7 +52,7 @@ class PostType:
 
     @strawberry.field
     def content(self) -> PostContentType:
-        return _content_to_strawberry(self.content)
+        return TypeAdapter(PostContent).validate_python(self.content)
 
 
 @strawberry.type(name="User")
