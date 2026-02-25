@@ -7,6 +7,7 @@ from pydantic import TypeAdapter
 from app import database, models
 from app.content_types import (
     ImageContent,
+    ImageDimensions,
     LinkContent,
     PostContent,
     TextContent,
@@ -27,10 +28,23 @@ class TextContentType:
         return len(self.body.split())
 
 
+@strawberry.experimental.pydantic.type(ImageDimensions)
+class ImageDimensionsType:
+    width: strawberry.auto
+    height: strawberry.auto
+
+    @strawberry.field
+    def aspect_ratio(self) -> str:
+        from math import gcd
+        d = gcd(self.width, self.height)
+        return f"{self.width // d}:{self.height // d}"
+
+
 @strawberry.experimental.pydantic.type(ImageContent)
 class ImageContentType:
     url: strawberry.auto
     caption: strawberry.auto
+    dimensions: strawberry.auto
 
 
 @strawberry.experimental.pydantic.type(LinkContent)

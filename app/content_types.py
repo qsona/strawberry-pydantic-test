@@ -17,10 +17,16 @@ class TextContent(BaseModel):
     format: TextFormat = TextFormat.PLAIN
 
 
+class ImageDimensions(BaseModel):
+    width: int
+    height: int
+
+
 class ImageContent(BaseModel):
     type: Literal["image"]
     url: str
     caption: str | None = None
+    dimensions: ImageDimensions | None = None
 
 
 class LinkContent(BaseModel):

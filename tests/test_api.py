@@ -7,7 +7,7 @@ from app.models import Post, User
 
 CONTENT_FRAGMENT = """
     ... on TextContentType { __typename body format wordCount }
-    ... on ImageContentType { __typename url caption }
+    ... on ImageContentType { __typename url caption dimensions { width height aspectRatio } }
     ... on LinkContentType { __typename url title description }
 """
 
@@ -136,6 +136,32 @@ class TestCreatePostWithImageContent:
         assert data["content"]["__typename"] == "ImageContentType"
         assert data["content"]["url"] == "https://example.com/img.png"
         assert data["content"]["caption"] == "Nice view"
+        assert data["content"]["dimensions"] is None
+
+    async def test_create_image_post_with_dimensions(self, client, db_session):
+        user = User(name="Alice")
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+
+        resp = await client.post("/graphql", json={
+            "query": CREATE_POST_MUTATION,
+            "variables": {
+                "input": {
+                    "title": "HD Photo",
+                    "content": {
+                        "type": "image",
+                        "url": "https://example.com/hd.png",
+                        "dimensions": {"width": 1920, "height": 1080},
+                    },
+                    "userId": user.id,
+                }
+            }
+        })
+        assert resp.status_code == 200
+        data = resp.json()["data"]["createPost"]
+        assert data["content"]["__typename"] == "ImageContentType"
+        assert data["content"]["dimensions"] == {"width": 1920, "height": 1080, "aspectRatio": "16:9"}
 
     async def test_image_post_without_caption(self, client, db_session):
         user = User(name="Alice")
